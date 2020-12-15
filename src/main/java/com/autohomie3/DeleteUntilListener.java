@@ -17,43 +17,49 @@ public class DeleteUntilListener extends ListenerAdapter {
     @Override
     public void onGuildMessageReceived(@Nonnull GuildMessageReceivedEvent event) {
         String content = event.getMessage().getContentDisplay();
-        if (content.toLowerCase().contains("!delete until")) {
-            // Test for manage message permissions
-            TextChannel textChannel = event.getChannel();
-            Member commandSender = event.getMember();
-            if (!commandSender.hasPermission(textChannel, Permission.MESSAGE_MANAGE)) {
-                return;
-            }
-
-            // Command succeeded, delete command
-            event.getMessage().delete().queue();
-
-            // Get message id from content
-            String[] words = content.split(" ");
-            long messageId = 0;
-            for (int i = 0; i < words.length; i++) {
-                if (words[i].equalsIgnoreCase("until")) {
-                    try {
-                        messageId = Long.parseLong(words[i + 1]);
-                    } catch (ArrayIndexOutOfBoundsException e) {
-                        return;
-                    }
-                }
-            }
-
-            // Get history since the spam message
-            Message spamMessage = textChannel.retrieveMessageById(messageId).complete();
-            long spamUserId = spamMessage.getAuthor().getIdLong();
-            MessageHistory history = textChannel.getHistoryAfter(messageId, MESSAGE_LIMIT).complete();
-
-            // Delete all messages by person A since that message
-            for (Message message : history.getRetrievedHistory()) {
-                if (message.getAuthor().getIdLong() == spamUserId) {
-                    message.delete().queue();
-                }
-            }
-            spamMessage.delete().queue();
+        if (!content.toLowerCase().contains("!delete until")) {
+            return;
         }
+
+        // Test for manage message permissions
+        TextChannel textChannel = event.getChannel();
+        Member commandSender = event.getMember();
+        if (!commandSender.hasPermission(textChannel, Permission.MESSAGE_MANAGE)) {
+            return;
+        }
+
+        // Command succeeded, delete command
+        event.getMessage().delete().queue();
+
+        // Get message id from content
+        String[] words = content.split(" ");
+        long messageId = 0;
+        for (int i = 0; i < words.length; i++) {
+            if (words[i].equalsIgnoreCase("until")) {
+                try {
+                    messageId = Long.parseLong(words[i + 1]);
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    return;
+                }
+            }
+        }
+
+        deleteMessagesUntilBySender(textChannel, messageId);
+    }
+
+    private void deleteMessagesUntilBySender(TextChannel textChannel, long messageId) {
+        // Get history since the spam message
+        Message spamMessage = textChannel.retrieveMessageById(messageId).complete();
+        long spamUserId = spamMessage.getAuthor().getIdLong();
+        MessageHistory history = textChannel.getHistoryAfter(messageId, MESSAGE_LIMIT).complete();
+
+        // Delete all messages by person A since that message
+        for (Message message : history.getRetrievedHistory()) {
+            if (message.getAuthor().getIdLong() == spamUserId) {
+                message.delete().queue();
+            }
+        }
+        spamMessage.delete().queue();
     }
 
 }
